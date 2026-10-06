@@ -73,8 +73,9 @@
   .summary-badge{ padding:5px 8px; font-size:11px; }
   /* 総荷重の内訳を入力するシート */
   .sheet{ position:fixed; inset:0; z-index:60; display:none; }
-  .sheet-bg{ position:absolute; inset:0; background:rgba(0,0,0,.5); }
-  .sheet-panel{ position:absolute; left:0; right:0; bottom:0; max-width:560px; margin:0 auto; background:var(--panel); border:1px solid var(--border); border-radius:16px 16px 0 0; padding:14px 16px calc(16px + env(safe-area-inset-bottom,0px)); }
+  .sheet-bg{ position:absolute; left:0; right:0; bottom:0; top:var(--sheet-top,0px); background:rgba(0,0,0,.3); }
+  /* 内訳入力は画面の上(上部固定バーの直下)に開く：スマホでスクロールせずに入力できる */
+  .sheet-panel{ position:absolute; left:0; right:0; top:var(--sheet-top,0px); bottom:auto; max-width:560px; margin:0 auto; background:var(--panel); border:1px solid var(--border); border-radius:0 0 16px 16px; padding:12px 16px 14px; max-height:calc(100% - var(--sheet-top,0px) - 8px); overflow-y:auto; box-shadow:0 8px 24px rgba(0,0,0,.25); }
   .sheet-head{ display:flex; align-items:center; justify-content:space-between; font-weight:700; margin-bottom:10px; }
   .sheet-panel .field{ margin-bottom:10px; }
   .sheet-panel input, .sheet-panel select{ font-size:16px; }
@@ -250,6 +251,27 @@
     border-radius:6px; padding:6px 3px; font-size:12.5px; text-align:center; font-family:'IBM Plex Sans JP', sans-serif; font-variant-numeric:tabular-nums;
   }
   .matrix-table input.rad-input{ width:52px; font-weight:600; }
+
+  /* ---- ジブ定格荷重表(表5)を見やすく：入力欄を広げ、見出し・角度列を固定、選択中の組み合わせを色付け ---- */
+  #jibMatrixTable{ border-collapse:separate; border-spacing:0; }
+  .matrix-wrap.jibwrap{ max-height:72vh; overflow:auto; }
+  #jibMatrixTable th, #jibMatrixTable td{ padding:5px 5px; }
+  #jibMatrixTable thead th{ position:sticky; top:0; z-index:3; font-size:11.5px; line-height:1.35; padding:7px 6px; border-bottom:1px solid var(--border); }
+  #jibMatrixTable thead th.rad-head{ left:0; z-index:5; }
+  #jibMatrixTable thead th .jh1{ display:block; font-weight:700; color:var(--text); font-size:12px; }
+  #jibMatrixTable thead th .jh2{ display:block; font-weight:500; color:var(--dim); }
+  #jibMatrixTable td.rad-cell{ z-index:2; }
+  #jibMatrixTable input[data-role="jibr"], #jibMatrixTable input[data-role="jibt"]{ width:56px; font-size:14px; padding:8px 3px; }
+  #jibMatrixTable thead tr.jr2 th{ font-size:10.5px; font-weight:600; color:var(--dim); padding:3px 4px; top:var(--jr1h,50px); }
+  #jibMatrixTable thead tr.jr1 th.jc{ border-left:1px solid var(--border); }
+  #jibMatrixTable td.jcol-t{ padding-left:2px; }
+  #jibMatrixTable td.jcol-r{ padding-right:2px; }
+  #jibMatrixTable input.rad-input{ width:56px; font-size:14px; padding:8px 4px; }
+  #jibMatrixTable tbody tr:nth-child(even) td:not(.rad-cell){ background:rgba(127,140,160,.07); }
+  #jibMatrixTable .jgrp{ border-left:2px solid var(--border); }
+  #jibMatrixTable thead th.jsel{ background:rgba(77,141,255,.22); box-shadow:inset 0 -3px 0 var(--accent); }
+  #jibMatrixTable td.jsel{ background:rgba(77,141,255,.12) !important; }
+  #jibMatrixTable td.jsel input{ border-color:var(--accent); }
   .matrix-del{
     width:24px; height:24px; border-radius:6px; border:1px solid var(--border);
     background:var(--panel2); color:var(--dim2); font-size:13px; line-height:1; cursor:pointer;
@@ -429,8 +451,8 @@
       </div>
       <div class="obstacle-toolbar" id="obstacleToolbar">
         <div class="obstacle-toolbar-label">障害物</div>
-        <button type="button" class="obstacle-type-btn" id="addCircleBtn" title="丸障害物を右中央付近に配置（ドラッグで移動）">●</button>
-        <button type="button" class="obstacle-type-btn" id="addRectBtn" title="四角障害物を右下に配置（右上をドラッグでサイズ変更、中央をドラッグで水平移動）">■</button>
+        <button type="button" class="obstacle-type-btn" id="addCircleBtn" title="空中の障害物（梁・配管など）を右中央付近に配置（ドラッグで移動）">▬</button>
+        <button type="button" class="obstacle-type-btn" id="addRectBtn" title="鉄骨・ラックなどの障害物を右下に配置（右上をドラッグでサイズ変更、中央をドラッグで水平移動）">■</button>
         <button type="button" class="obstacle-type-btn" id="deleteModeBtn" title="押してから障害物をタップすると削除されます">✕</button>
       </div>
     </div>
@@ -480,8 +502,8 @@
     <details class="adv"><summary>操作のヒント</summary>
     <div class="drag-hint">
       <span class="k"><span class="dot-sample" style="background:var(--danger)"></span>吊り荷を左右にドラッグ（半径を調整）</span>
-      <span class="k"><span class="dot-sample" style="background:var(--warn)"></span>●/■ボタンで障害物を配置</span>
-      <span class="k"><span class="dot-sample" style="background:var(--accent)"></span>四角は右上ドラッグでサイズ変更・中央ドラッグで水平移動（別々の操作）／丸はドラッグで移動のみ</span>
+      <span class="k"><span class="dot-sample" style="background:var(--warn)"></span>▬/■ボタンで障害物を配置</span>
+      <span class="k"><span class="dot-sample" style="background:var(--accent)"></span>■(鉄骨・ラック)は右上ドラッグでサイズ変更・中央ドラッグで水平移動（別々の操作）／▬(空中の梁・配管)はドラッグで移動のみ</span>
       <span class="k"><span class="dot-sample" style="background:var(--danger)"></span>✕を押してから障害物をタップで削除</span>
       <span class="k"><span class="dot-sample" style="background:var(--accent)"></span>指2本のピンチで図を拡大縮小・移動</span>
     </div>
@@ -530,9 +552,9 @@
   <section class="panel collapsed">
     <h2><span class="idx">5</span>ジブ使用時の定格荷重表（ブーム角度 × ブーム長+ジブ長+オフセット角）<span class="chev">▾</span></h2>
     <div class="panel-body">
-    <p class="desc">加藤製作所 KR-25H-V8 相当の性能表を初期値として入力済みです(ブーム23.5m/30.5m×ジブ8.7m/13.1m×オフセット5/25/45/60°、アウトリガ最大張出・全周の値)。各セルは「半径,定格荷重」の形式(例:14.9,2.55 → 半径14.9m時2.55t)。空欄はその角度では定格が無い(危険角度超え)ことを意味します。実機の銘板・取扱説明書と必ず照合してください。</p>
+    <p class="desc">加藤製作所 KR-25H-V8 相当の性能表を初期値として入力済みです(ブーム23.5m/30.5m×ジブ8.7m/13.1m×オフセット5/25/45/60°、アウトリガ最大張出・全周の値)。【見方】左端の「ブーム角度」は、ブーム(本体)を何度に起こしているか。各組み合わせ(ブーム長+ジブ長+オフセット角)ごとに、その角度のときの「半径(m)＝ジブ先端の作業半径」と「荷重(t)＝その半径での定格総荷重」を並べています。空欄はその角度では定格が無い(危険角度超え)ことを意味します。実機の銘板・取扱説明書と必ず照合してください。</p>
 
-    <div class="matrix-wrap"><table class="matrix-table" id="jibMatrixTable"></table></div>
+    <div class="matrix-wrap jibwrap"><table class="matrix-table" id="jibMatrixTable"></table></div>
     <button class="btn btn-add" id="addJibAngleRow" type="button">＋ ブーム角度の行を追加</button>
     </div>
   </section>
@@ -541,7 +563,7 @@
   <section class="panel collapsed">
     <h2><span class="idx">6</span>障害物<span class="chev">▾</span></h2>
     <div class="panel-body">
-    <p class="desc">上の図にある●/■ボタンで障害物を配置し、ドラッグで位置やサイズを調整できます（四角は右上をドラッグでサイズ変更、丸は移動のみ）。ここでは数値での直接入力・削除もできます。現在のブーム・ジブ・吊り荷の位置と干渉していないかを簡易チェックします（この半径・角度でのチェックのみで、旋回中の全方位は考慮していません）。</p>
+    <p class="desc">上の図にある▬/■ボタンで障害物を配置し、ドラッグで位置やサイズを調整できます（■は鉄骨・ラックなど地面から立つ構造物で、右上をドラッグでサイズ変更。▬は空中の梁・配管などで、移動のみ）。ここでは数値での直接入力・削除もできます。現在のブーム・ジブ・吊り荷の位置と干渉していないかを簡易チェックします（この半径・角度でのチェックのみで、旋回中の全方位は考慮していません）。</p>
 
     <div id="obstacleList"></div>
     <button class="btn btn-add" id="addObstacle" type="button">＋ 障害物を追加</button>
@@ -1654,7 +1676,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     obstacleState.forEach((o,i) => {
       const type = o.type === 'circle' ? 'circle' : 'rect';
       html += `<div class="table-row-flex" data-idx="${i}">
-        <button class="row-type" data-role="type" data-idx="${i}" type="button" title="種類を切り替え（丸／四角）">${type==='circle' ? '●' : '■'}</button>
+        <button class="row-type" data-role="type" data-idx="${i}" type="button" title="種類を切り替え（空中の梁・配管／鉄骨・ラック）">${type==='circle' ? '▬' : '■'}</button>
         <div class="field">
           <label>距離 <span class="unit">(m)</span></label>
           <input type="number" data-role="x" data-idx="${i}" value="${o.x}" step="0.5" min="0">
@@ -2000,29 +2022,51 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   // ============== jib load chart (ブーム角度 x ブーム長+ジブ長+オフセット角の組み合わせ) ==============
+  // いま選んでいる ブーム長+ジブ長+オフセット角 の列に色を付ける
+  function updateJibHighlight(){
+    const tb = $('jibMatrixTable'); if(!tb) return;
+    let key = null;
+    if(useJibEl.checked){
+      const bl = parseFloat($('boomLen').value), jl = parseFloat($('jibLen').value), off = parseFloat($('jibOff').value);
+      if(isFinite(bl) && isFinite(jl) && isFinite(off)) key = jibKey(bl, jl, off);
+    }
+    tb.querySelectorAll('[data-jk]').forEach(el => el.classList.toggle('jsel', key !== null && el.getAttribute('data-jk') === key));
+  }
   function renderJibMatrix(){
     ensureJibColumns();
     const cp = currentPreset();
     const combos = jibCombos();
     const jlText = jl => cp.jibLenLabel ? cp.jibLenLabel(jl) : (jl + 'm');
     const table = $('jibMatrixTable');
-    let html = '<thead><tr><th class="rad-head">' + (cp.jibRowLabel || 'ブーム角度(°)') + '</th>';
+    let html = '<thead><tr class="jr1"><th class="rad-head" rowspan="2">' + (cp.jibRowLabel || 'ブーム角度(°)') + '</th>';
+    let prevG = null, row2 = '';
     combos.forEach(({bl, jl, off}) => {
-      html += `<th>${bl}m+${jlText(jl)}<br><span style="font-weight:400;">${off}°(半径,t)</span></th>`;
+      const g = bl + '_' + jl, cls = (prevG !== null && g !== prevG) ? ' jgrp' : '';
+      prevG = g;
+      const k = jibKey(bl, jl, off);
+      html += `<th class="jc${cls}" colspan="2" data-jk="${k}"><span class="jh1">${bl}m+${jlText(jl)}</span><span class="jh2">オフセット${off}°</span></th>`;
+      row2 += `<th class="${cls.trim()}" data-jk="${k}">半径(m)</th><th data-jk="${k}">荷重(t)</th>`;
     });
-    html += '</tr></thead><tbody>';
+    html += '<th rowspan="2"></th></tr><tr class="jr2">' + row2 + '</tr></thead><tbody>';
     chartState.jibAngles.forEach((ang, i) => {
       html += `<tr><td class="rad-cell"><input class="rad-input" type="number" step="1" data-row="${i}" data-role="jibangle" value="${ang}"></td>`;
+      let pg = null;
       combos.forEach(({bl, jl, off}) => {
         const k = jibKey(bl, jl, off);
         const v = chartState.jibColumns[k][i];
-        html += `<td><input type="text" data-row="${i}" data-key="${k}" data-role="jibcap" value="${v===undefined?'':v}" placeholder="半径,t"></td>`;
+        const bits = (v === undefined || v === null) ? [] : String(v).split(',');
+        const rv = (bits[0] || '').trim(), tv = (bits[1] || '').trim();
+        const g = bl + '_' + jl, gc = (pg !== null && g !== pg) ? ' jgrp' : '';
+        pg = g;
+        html += `<td class="jcol-r${gc}" data-jk="${k}"><input type="text" inputmode="decimal" data-row="${i}" data-key="${k}" data-role="jibr" value="${rv}" placeholder="半径"></td>`
+              + `<td class="jcol-t" data-jk="${k}"><input type="text" inputmode="decimal" data-row="${i}" data-key="${k}" data-role="jibt" value="${tv}" placeholder="荷重"></td>`;
       });
       html += `<td><button class="matrix-del" type="button" data-row="${i}">×</button></td>`;
       html += '</tr>';
     });
     html += '</tbody>';
     table.innerHTML = html;
+    updateJibHighlight();
 
     table.querySelectorAll('input[data-role="jibangle"]').forEach(inp => {
       inp.addEventListener('input', () => {
@@ -2032,14 +2076,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         saveState();
       });
     });
-    table.querySelectorAll('input[data-role="jibcap"]').forEach(inp => {
+    // 半径・荷重を別々の欄で入力し、内部では従来どおり「半径,荷重」の1つの文字列として保持する
+    table.querySelectorAll('input[data-role="jibr"], input[data-role="jibt"]').forEach(inp => {
       inp.addEventListener('input', () => {
         const i = parseInt(inp.getAttribute('data-row'), 10);
         const key = inp.getAttribute('data-key');
-        chartState.jibColumns[key][i] = inp.value;
+        const q = s => 'input[data-role="' + s + '"][data-row="' + i + '"][data-key="' + key + '"]';
+        const r = table.querySelector(q('jibr')).value.trim().replace(/,/g, '.');
+        const c = table.querySelector(q('jibt')).value.trim().replace(/,/g, '.');
+        chartState.jibColumns[key][i] = (r === '' && c === '') ? '' : (r + ',' + c);
         compute(); saveState();
       });
     });
+    // 2段目の見出しを1段目の真下に固定する
+    const r1 = table.querySelector('tr.jr1');
+    if(r1) table.style.setProperty('--jr1h', r1.getBoundingClientRect().height + 'px');
     table.querySelectorAll('.matrix-del').forEach(btn => {
       btn.addEventListener('click', () => {
         const i = parseInt(btn.getAttribute('data-row'), 10);
@@ -2315,8 +2366,34 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const halfW = Math.max(8, (w/2)*scale);
         const leftX = ox - halfW;
         const rightX = ox + halfW;
-        parts.push(`<rect x="${leftX}" y="${oyTop}" width="${halfW*2}" height="${Math.max(1,baseY-oyTop)}" fill="${color}" fill-opacity="0.2" stroke="${color}" stroke-width="1.2" pointer-events="none"/>`);
-        parts.push(`<text x="${ox}" y="${oyTop-4}" font-size="8" fill="${color}" text-anchor="middle" font-family="IBM Plex Sans JP, sans-serif" pointer-events="none">■ ${o.label} ${o.h}m</text>`);
+        {   // 鉄骨・ラック風：外枠(柱)＋段ごとの梁＋Ｘ/Ｖブレース。形は四角のまま、中身で「構造物」に見せる
+          const pxW = halfW*2, pxH = Math.max(1, baseY-oyTop);
+          const bays = Math.max(1, Math.round(pxH / Math.max(scale*3, 20)));   // 段数(約3mごと)
+          const cols = Math.max(1, Math.round(pxW / Math.max(scale*3, 24)));   // 柱間(約3mごと)
+          const bayH = pxH / bays, colW = pxW / cols;
+          let beams = '', braces = '', posts = '';
+          for(let k=1; k<bays; k++){ const yy = (baseY - k*bayH).toFixed(1); beams += `M${leftX} ${yy}H${rightX}`; }
+          for(let c=1; c<cols; c++){ const xx = (leftX + c*colW).toFixed(1); posts += `M${xx} ${oyTop}V${baseY}`; }
+          if(colW >= 10 && bayH >= 10){
+            for(let k=0; k<bays; k++){
+              const yB = baseY - k*bayH, yT = yB - bayH;
+              for(let c=0; c<cols; c++){
+                const xL = leftX + c*colW, xR = xL + colW;
+                if((k + c) % 2 === 0) braces += `M${xL.toFixed(1)} ${yB.toFixed(1)}L${xR.toFixed(1)} ${yT.toFixed(1)}`;
+                else braces += `M${xL.toFixed(1)} ${yT.toFixed(1)}L${xR.toFixed(1)} ${yB.toFixed(1)}`;
+              }
+            }
+          }
+          parts.push(`<rect x="${leftX}" y="${oyTop}" width="${pxW}" height="${pxH}" fill="${color}" fill-opacity="0.10" pointer-events="none"/>`);
+          if(braces) parts.push(`<path d="${braces}" fill="none" stroke="${color}" stroke-opacity="0.75" stroke-width="1" pointer-events="none"/>`);
+          if(posts) parts.push(`<path d="${posts}" fill="none" stroke="${color}" stroke-opacity="0.85" stroke-width="1.4" pointer-events="none"/>`);
+          if(beams) parts.push(`<path d="${beams}" fill="none" stroke="${color}" stroke-width="1.8" pointer-events="none"/>`);
+          // 外枠(柱は太め)＋頭の梁を太く＋柱脚のベースプレート
+          parts.push(`<rect x="${leftX}" y="${oyTop}" width="${pxW}" height="${pxH}" fill="none" stroke="${color}" stroke-width="2.2" pointer-events="none"/>`);
+          parts.push(`<rect x="${leftX-2}" y="${oyTop-2}" width="${pxW+4}" height="3.6" fill="${color}" pointer-events="none"/>`);
+          parts.push(`<rect x="${leftX-2.5}" y="${baseY-2.5}" width="6" height="2.5" fill="${color}" pointer-events="none"/><rect x="${rightX-3.5}" y="${baseY-2.5}" width="6" height="2.5" fill="${color}" pointer-events="none"/>`);
+        }
+        parts.push(`<text x="${ox}" y="${oyTop-6}" font-size="8" fill="${color}" text-anchor="middle" font-family="IBM Plex Sans JP, sans-serif" pointer-events="none">■ ${o.label} ${o.h}m</text>`);
         // draggable handle over the shape body ("middle"), to move it
         moveHandles.push(`<rect class="obstacle-handle" data-handle="obstacle:${oi}" x="${leftX}" y="${oyTop}" width="${halfW*2}" height="${Math.max(1,baseY-oyTop)}" fill="${color}" fill-opacity="0.001"/>`);
         // resize handle centered exactly on the top-right corner, generously sized so it's easy
@@ -2330,8 +2407,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         // circle/point obstacle: floats exactly where placed, not tied to the ground; drag anywhere on it to move, no resize
         const r = Math.max(6, scale*0.32);
         // ドラッグ中のガイド線(ゴースト)は表示しない：距離・高さは左上のリストで確認できる
-        parts.push(`<circle cx="${ox}" cy="${oyTop}" r="${r}" fill="${color}" fill-opacity="0.28" stroke="${color}" stroke-width="1.4" pointer-events="none"/>`);
-        parts.push(`<text x="${ox}" y="${oyTop-r-4}" font-size="8" fill="${color}" text-anchor="middle" font-family="IBM Plex Sans JP, sans-serif" pointer-events="none">● ${o.label} ${o.h}m</text>`);
+        {   // 空中の梁・配管：H形鋼の断面(四角)で描く
+          const hs = Math.max(8, scale*0.4), fl = hs*0.3, web = hs*0.45;
+          parts.push(`<rect x="${ox-hs}" y="${oyTop-hs}" width="${hs*2}" height="${hs*2}" fill="${color}" fill-opacity="0.12" stroke="${color}" stroke-width="1" stroke-dasharray="2 2" pointer-events="none"/>`);
+          parts.push(`<path d="M${ox-hs} ${oyTop-hs}H${ox+hs}V${oyTop-hs+fl}H${ox+web/2}V${oyTop+hs-fl}H${ox+hs}V${oyTop+hs}H${ox-hs}V${oyTop+hs-fl}H${ox-web/2}V${oyTop-hs+fl}H${ox-hs}Z" fill="${color}" fill-opacity="0.55" stroke="${color}" stroke-width="1.4" stroke-linejoin="round" pointer-events="none"/>`);
+        }
+        parts.push(`<text x="${ox}" y="${oyTop-Math.max(8, scale*0.4)-4}" font-size="8" fill="${color}" text-anchor="middle" font-family="IBM Plex Sans JP, sans-serif" pointer-events="none">▬ ${o.label} ${o.h}m</text>`);
         circleHandles.push(`<circle class="obstacle-handle" data-handle="obstacle:${oi}" cx="${ox}" cy="${oyTop}" r="${Math.max(r,13)}" fill="${color}" fill-opacity="0.001"/>`);
       }
     });
@@ -2451,13 +2532,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
 
     // ---- single draggable handle = the load, resting on the ground ----
+    // 描画順(下→上)：図 → 寸法 → 左上の枠(見た目) → 左上の枠の「条件編集」タップ範囲 → 障害物・吊り荷のハンドル → 機種メニューのタップ範囲
+    // 以前は左上の枠のタップ範囲が障害物ハンドルより手前にあり、機種変更で縮尺が変わって障害物が枠の下に入ると掴めなくなっていた。
+    const isMenuHit = s => /data-(cranemenu|cwmenu|catalogpdf)=/.test(s);
+    const isEditHit = s => s.indexOf('data-condedit=') >= 0;
+    parts.push(...dimParts);       // 旋回中心・付け根の寸法(ブームに隠れない)
+    parts.push(...readoutParts.filter(s => !isMenuHit(s) && !isEditHit(s)));   // 左上の枠(機種・荷重・長さ)の見た目
+    parts.push(...readoutParts.filter(isEditHit));                              // 枠のタップ範囲(障害物より奥)
     // 障害物ハンドル(移動→丸→サイズ変更の順で手前へ)。吊り荷ハンドルはさらに手前
     parts.push(...moveHandles, ...circleHandles, ...resizeHandles);
     parts.push(`<circle class="handle-dot" data-handle="load" cx="${tipSvgX}" cy="${loadSvgY}" r="16" fill="var(--danger)" fill-opacity="0.001"/>`);
     parts.push(`<rect x="${tipSvgX-7}" y="${loadSvgY-7}" width="14" height="14" rx="2" fill="var(--danger)" stroke="var(--panel)" stroke-width="2" pointer-events="none"/>`);
-
-    parts.push(...dimParts);       // 旋回中心・付け根の寸法(ブームに隠れない)
-    parts.push(...readoutParts);   // 左上の枠(機種・荷重・長さ)は最前面
+    parts.push(...readoutParts.filter(isMenuHit));                              // 機種・CWメニューのボタンは常にタップできる
     svg.innerHTML = parts.join('');
   }
 
@@ -3080,6 +3166,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeCraneMenu(); });
   // 上部固定バーと内訳シートの表示を、計算結果に合わせる
   function syncSummaryExtras(){
+    try{ updateJibHighlight(); }catch(e){}
     { const cp = currentPreset();
       $('stickyCraneT').textContent = (cp.groupLabel || cp.capacityLabel) + 'クレーン';
       $('stickyCraneM').textContent = cp.modelName + (cp.cwLabel ? '　' + cp.cwLabel : ''); }
@@ -3100,6 +3187,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('sheetAddW').value = $('addW').value;
     $('sheetHookW').innerHTML = $('hookW').innerHTML;
     $('sheetHookW').value = $('hookW').value;
+    { const sm = document.querySelector('.summary');   // 上部固定バーの下端に合わせる
+      const top = sm ? Math.max(0, Math.round(sm.getBoundingClientRect().bottom)) : 0;
+      $('loadSheet').style.setProperty('--sheet-top', top + 'px'); }
     $('loadSheet').style.display = 'block';
     syncSummaryExtras();
   }
@@ -3602,7 +3692,24 @@ ${catalogHtml || '<table class="chart">'+tableHtml+'</table>'}
   ['boomLen','boomAng'].forEach(id => $(id).addEventListener('input', ()=>{ $('boomAutoNote').style.display = 'none'; }));
 
   $('boomAuto').addEventListener('change', ()=>{
-    if(!isAutoBoom()) $('boomAutoPickNote').style.display = 'none';
+    if(!isAutoBoom()){
+      $('boomAutoPickNote').style.display = 'none';
+      // 自動選択をやめたら、ブーム長は最長を既定にする(半径は維持して角度を合わせ直す)
+      renderBoomLenSelect(true);
+      {   // どの機種でも確実に最長にする(選択肢の並び順に頼らず、いま選べる長さの最大値を選ぶ)
+        const opts = useJibEl.checked ? getJibCapableBoomOptions() : getBoomOptions();
+        if(opts.length) $('boomLen').value = String(Math.max.apply(null, opts));
+      }
+      autoSelectHook();
+      const newLen = parseFloat($('boomLen').value) || 0;
+      const targetR = lastRadius !== null ? lastRadius : newLen*0.6;
+      const sol = setAngleForRadius(newLen, targetR);
+      if(sol.feasible){
+        showAutoNote(`<span class="flag safe">手動</span>　ブーム長を最長の ${newLen}m にし、半径 ${targetR.toFixed(1)}m を維持するよう角度を ${Math.round(sol.angle)}° に合わせました。`);
+      } else {
+        showAutoNote(`<span class="flag warn">注意</span>　ブーム長 ${newLen}m ではこの半径に届きません。角度を${Math.round(sol.angle)}°(限界)にしています。`);
+      }
+    }
     compute(); saveState();
   });
   $('boomLen').addEventListener('change', ()=>{
